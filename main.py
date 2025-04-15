@@ -201,9 +201,12 @@ def input_float(prompt):
     """Get valid float input from user"""
     while True:
         try:
-            return float(input(prompt))
+            value = input(prompt)
+            # Replace comma with dot if user accidentally uses comma
+            value = value.replace(',', '.')
+            return float(value)
         except ValueError:
-            print("Masukkan angka yang valid.")
+            print("Masukkan angka yang valid (contoh: 2 atau 2.5).")
 
 def input_int(prompt):
     """Get valid integer input from user"""
