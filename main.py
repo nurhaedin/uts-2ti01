@@ -1,6 +1,7 @@
 import mysql.connector
 import pandas as pd
 from datetime import datetime
+from decimal import Decimal
 
 class ZakatManager:
     def __init__(self):
@@ -109,40 +110,41 @@ class ZakatManager:
             cursor.close()
 
     def add_transaksi_zakat(self, id_zakat, id_beras, jumlah_beras, tanggal):
-    """Add new zakat transaction (rice distribution)"""
-    try:
-        cursor = self.connection.cursor()
-        
-        # Check if zakat data exists
-        cursor.execute("SELECT 1 FROM zakat_data WHERE id = %s", (id_zakat,))
-        if not cursor.fetchone():
-            print("Error: ID zakat tidak ditemukan.")
-            return False
+        """Add new zakat transaction (rice distribution)"""
+        try:
+            cursor = self.connection.cursor()
             
-        # Check if rice type exists
-        cursor.execute("SELECT harga_per_kg FROM master_beras WHERE id = %s", (id_beras,))
-        result = cursor.fetchone()
-        if not result:
-            print("Error: ID beras tidak ditemukan.")
-            return False
+            # Check if zakat data exists
+            cursor.execute("SELECT 1 FROM zakat_data WHERE id = %s", (id_zakat,))
+            if not cursor.fetchone():
+                print("Error: ID zakat tidak ditemukan.")
+                return False
+                
+            # Check if rice type exists
+            cursor.execute("SELECT harga_per_kg FROM master_beras WHERE id = %s", (id_beras,))
+            result = cursor.fetchone()
+            if not result:
+                print("Error: ID beras tidak ditemukan.")
+                return False
+                
+            # Convert Decimal to float safely
+            harga_per_kg = float(Decimal(str(result[0])))
+            total_harga = harga_per_kg * float(jumlah_beras)
             
-        harga_per_kg = float(result[0])  # Convert Decimal to float
-        total_harga = harga_per_kg * jumlah_beras
-        
-        query = """INSERT INTO transaksi_zakat (id_zakat, id_beras, jumlah_beras, total_harga, tanggal) 
-                   VALUES (%s, %s, %s, %s, %s)"""
-        cursor.execute(query, (id_zakat, id_beras, jumlah_beras, total_harga, tanggal))
-        self.connection.commit()
-        print("Transaksi zakat berhasil ditambahkan.")
-        return True
-    except mysql.connector.Error as err:
-        print(f"Error: {err}")
-        return False
-    except Exception as e:
-        print(f"Error: {e}")
-        return False
-    finally:
-        cursor.close()
+            query = """INSERT INTO transaksi_zakat (id_zakat, id_beras, jumlah_beras, total_harga, tanggal) 
+                       VALUES (%s, %s, %s, %s, %s)"""
+            cursor.execute(query, (id_zakat, id_beras, jumlah_beras, total_harga, tanggal))
+            self.connection.commit()
+            print("Transaksi zakat berhasil ditambahkan.")
+            return True
+        except mysql.connector.Error as err:
+            print(f"Database Error: {err}")
+            return False
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+        finally:
+            cursor.close()
 
     def view_transaksi_zakat(self):
         """View all zakat transactions"""
@@ -201,9 +203,10 @@ def input_float(prompt):
     """Get valid float input from user"""
     while True:
         try:
-            value = input(prompt)
-            # Replace comma with dot if user accidentally uses comma
-            value = value.replace(',', '.')
+            value = input(prompt).strip()
+            # Handle both comma and dot as decimal separator
+            if ',' in value:
+                value = value.replace(',', '.')
             return float(value)
         except ValueError:
             print("Masukkan angka yang valid (contoh: 2 atau 2.5).")
